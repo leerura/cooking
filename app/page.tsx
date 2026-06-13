@@ -4,8 +4,11 @@ import { useEffect, useState } from "react";
 import { AlertCircle, CheckCircle2, Clapperboard, Refrigerator, Sparkles } from "lucide-react";
 import { IngredientManager } from "@/components/IngredientManager";
 import { RecipeAnalysisResult } from "@/components/RecipeAnalysisResult";
+import { RecipeCard } from "@/components/RecipeCard";
 import { SavedRecipeList } from "@/components/SavedRecipeList";
 import { URLInput } from "@/components/URLInput";
+import { getRecipeAvailability } from "@/lib/ingredients";
+import { getRecipesAvailableWithCurrentIngredients } from "@/lib/recommendations";
 import { extractYouTubeVideoId } from "@/lib/youtube";
 import {
   createRecipeFromAnalysisResult,
@@ -154,21 +157,108 @@ export default function HomePage() {
   }
 
   const approvedRecipes = getApprovedRecipes(recipes);
+  const recommendationRecipes = getRecipesAvailableWithCurrentIngredients(recipes, ingredients);
+  const readyNowRecipes = approvedRecipes.filter((recipe) => getRecipeAvailability(recipe, ingredients).status === "바로 가능");
+  const recommendationPreview = recommendationRecipes.slice(0, 3);
+
+  function scrollToSection(id: string) {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-      <header className="mb-6">
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-sm font-semibold text-carrot-700 ring-1 ring-carrot-100">
-          <Sparkles aria-hidden className="h-4 w-4" />
-          자취생 레시피 판별기
+      <header className="mb-6 overflow-hidden rounded-lg bg-white p-6 shadow-soft ring-1 ring-carrot-100 sm:p-8">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
+          <div>
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-carrot-50 px-3 py-1 text-sm font-semibold text-carrot-700 ring-1 ring-carrot-100">
+              <Sparkles aria-hidden className="h-4 w-4" />
+              이거가능?
+            </div>
+            <h1 className="max-w-3xl text-4xl font-black tracking-normal text-stone-950 sm:text-5xl">
+              집에 있는 재료로 지금 가능한 요리 찾기
+            </h1>
+            <p className="mt-4 max-w-2xl text-base leading-7 text-stone-600">
+              내 재료함을 기준으로 바로 가능한 레시피를 먼저 보여줘요. 유튜브 레시피는 필요할 때 추가하고, 평소에는 내 재료함 기준으로
+              바로 가능한 요리를 추천받아요.
+            </p>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => scrollToSection("recommendation-preview")}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-carrot-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-carrot-700"
+              >
+                <Sparkles aria-hidden className="h-4 w-4" />
+                가능한 요리 보기
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollToSection("ingredient-manager")}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-stone-100 px-5 py-3 text-sm font-bold text-stone-900 transition hover:bg-stone-200"
+              >
+                <Refrigerator aria-hidden className="h-4 w-4" />
+                재료함 관리하기
+              </button>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+            <SummaryCard label="보유 재료" value={`${ingredients.length}개`} />
+            <SummaryCard label="추천 사용 레시피" value={`${approvedRecipes.length}개`} />
+            <SummaryCard label="바로 가능한 요리" value={`${readyNowRecipes.length}개`} accent />
+          </div>
         </div>
-        <h1 className="text-4xl font-black tracking-normal text-stone-950 sm:text-5xl">이거가능?</h1>
-        <p className="mt-2 max-w-2xl text-base leading-7 text-stone-600">유튜브 레시피, 내 재료로 가능한지 먼저 확인하기</p>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_540px] xl:grid-cols-[minmax(0,1fr)_600px] lg:items-start">
         <div className="space-y-6">
-          <URLInput url={url} setUrl={setUrl} onAnalyze={analyzeRecipe} loading={loading} />
+          <section id="recommendation-preview" className="scroll-mt-6">
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h2 className="text-xl font-black text-stone-950">내 재료로 추천받기</h2>
+                <p className="mt-1 text-sm leading-6 text-stone-600">승인된 레시피 중 지금 재료함 기준으로 만들기 쉬운 요리를 먼저 보여줘요.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedFilter("approved");
+                  scrollToSection("saved-recipes");
+                }}
+                className="inline-flex items-center justify-center rounded-lg bg-stone-100 px-4 py-2 text-sm font-bold text-stone-900 transition hover:bg-stone-200"
+              >
+                전체 레시피 보기
+              </button>
+            </div>
+
+            {recommendationPreview.length > 0 ? (
+              <div className="space-y-3">
+                {recommendationPreview.map((recipe) => (
+                  <RecipeCard
+                    key={recipe.id}
+                    recipe={recipe}
+                    userIngredients={ingredients}
+                    onSelect={(selectedRecipe) => {
+                      setActiveRecipe(selectedRecipe);
+                      setEditing(false);
+                      scrollToSection("recipe-review");
+                    }}
+                    onDelete={deleteSavedRecipe}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-lg bg-stone-50 p-5 text-sm leading-6 text-stone-600 ring-1 ring-stone-200">
+                아직 바로 추천할 요리가 없어요. 재료를 추가하거나 레시피를 승인해보세요.
+              </div>
+            )}
+          </section>
+
+          <section>
+            <div className="mb-3">
+              <h2 className="text-lg font-black text-stone-950">유튜브 레시피 추가</h2>
+              <p className="mt-1 text-sm leading-6 text-stone-600">마음에 드는 유튜브 레시피를 추가해서 추천 DB를 채울 수 있어요.</p>
+            </div>
+            <URLInput url={url} setUrl={setUrl} onAnalyze={analyzeRecipe} loading={loading} />
+          </section>
 
           {loading ? <AnalysisLoadingCard step={analysisStep} /> : null}
 
@@ -188,49 +278,52 @@ export default function HomePage() {
             </section>
           ) : null}
 
-          {activeRecipe ? (
-            <RecipeAnalysisResult
-              recipe={activeRecipe}
-              userIngredients={ingredients}
-              editing={editing}
-              setEditing={setEditing}
-              onSave={saveRecipe}
-              onUpdate={updateRecipe}
-            />
-          ) : (
-            <section className="rounded-lg bg-white p-5 shadow-soft ring-1 ring-stone-200">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-carrot-100 text-carrot-700">
-                <Refrigerator aria-hidden className="h-6 w-6" />
-              </div>
-              <h2 className="text-xl font-black text-stone-950">보고 있던 레시피를 붙여넣어 보세요</h2>
-              <p className="mt-2 text-sm leading-6 text-stone-600">
-                영상 설명과 제목으로 재료, 순서, 자취생 장벽을 정리하고 내 재료함 기준으로 바로 가능한지 계산해요.
-              </p>
-            </section>
-          )}
+          <section id="recipe-review" className="scroll-mt-6">
+            {activeRecipe ? (
+              <RecipeAnalysisResult
+                recipe={activeRecipe}
+                userIngredients={ingredients}
+                editing={editing}
+                setEditing={setEditing}
+                onSave={saveRecipe}
+                onUpdate={updateRecipe}
+              />
+            ) : null}
+          </section>
 
-          <SavedRecipeList
-            recipes={recipes}
-            approvedCount={approvedRecipes.length}
-            userIngredients={ingredients}
-            selectedFilter={selectedFilter}
-            setSelectedFilter={setSelectedFilter}
-            search={search}
-            setSearch={setSearch}
-            onSelect={(recipe) => {
-              setActiveRecipe(recipe);
-              setEditing(false);
-              window.scrollTo({ top: 0, behavior: "smooth" });
-            }}
-            onDelete={deleteSavedRecipe}
-          />
+          <section id="saved-recipes" className="scroll-mt-6">
+            <SavedRecipeList
+              recipes={recipes}
+              approvedCount={approvedRecipes.length}
+              userIngredients={ingredients}
+              selectedFilter={selectedFilter}
+              setSelectedFilter={setSelectedFilter}
+              search={search}
+              setSearch={setSearch}
+              onSelect={(recipe) => {
+                setActiveRecipe(recipe);
+                setEditing(false);
+                scrollToSection("recipe-review");
+              }}
+              onDelete={deleteSavedRecipe}
+            />
+          </section>
         </div>
 
-        <aside className="space-y-6 lg:sticky lg:top-6">
+        <aside id="ingredient-manager" className="scroll-mt-6 space-y-6 lg:sticky lg:top-6">
           <IngredientManager ingredients={ingredients} setIngredients={setIngredients} />
         </aside>
       </div>
     </main>
+  );
+}
+
+function SummaryCard({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <div className={`rounded-lg p-4 ring-1 ${accent ? "bg-emerald-50 ring-emerald-100" : "bg-stone-50 ring-stone-200"}`}>
+      <p className={`text-sm font-semibold ${accent ? "text-emerald-800" : "text-stone-500"}`}>{label}</p>
+      <p className="mt-1 text-2xl font-black tracking-normal text-stone-950">{value}</p>
+    </div>
   );
 }
 
