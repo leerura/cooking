@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AlertCircle, CheckCircle2, Clapperboard, Refrigerator, Sparkles } from "lucide-react";
-import { IngredientManager } from "@/components/IngredientManager";
+import { IngredientDrawer } from "@/components/IngredientDrawer";
 import { RecipeAnalysisResult } from "@/components/RecipeAnalysisResult";
 import { RecipeCard } from "@/components/RecipeCard";
 import { SavedRecipeList } from "@/components/SavedRecipeList";
@@ -34,6 +34,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [analysisStep, setAnalysisStep] = useState<"idle" | "metadata" | "video" | "saving">("idle");
   const [editing, setEditing] = useState(false);
+  const [isIngredientDrawerOpen, setIsIngredientDrawerOpen] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error" | "warning"; text: string } | null>(null);
 
   useEffect(() => {
@@ -192,7 +193,7 @@ export default function HomePage() {
               </button>
               <button
                 type="button"
-                onClick={() => scrollToSection("ingredient-manager")}
+                onClick={() => setIsIngredientDrawerOpen(true)}
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-stone-100 px-5 py-3 text-sm font-bold text-stone-900 transition hover:bg-stone-200"
               >
                 <Refrigerator aria-hidden className="h-4 w-4" />
@@ -209,111 +210,115 @@ export default function HomePage() {
         </div>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_540px] xl:grid-cols-[minmax(0,1fr)_600px] lg:items-start">
-        <div className="space-y-6">
-          <section id="recommendation-preview" className="scroll-mt-6">
-            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="text-xl font-black text-stone-950">내 재료로 추천받기</h2>
-                <p className="mt-1 text-sm leading-6 text-stone-600">승인된 레시피 중 지금 재료함 기준으로 만들기 쉬운 요리를 먼저 보여줘요.</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedFilter("approved");
-                  scrollToSection("saved-recipes");
-                }}
-                className="inline-flex items-center justify-center rounded-lg bg-stone-100 px-4 py-2 text-sm font-bold text-stone-900 transition hover:bg-stone-200"
-              >
-                전체 레시피 보기
-              </button>
+      <div className="space-y-6">
+        <section id="recommendation-preview" className="scroll-mt-6">
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-xl font-black text-stone-950">내 재료로 추천받기</h2>
+              <p className="mt-1 text-sm leading-6 text-stone-600">승인된 레시피 중 지금 재료함 기준으로 만들기 쉬운 요리를 먼저 보여줘요.</p>
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedFilter("approved");
+                scrollToSection("saved-recipes");
+              }}
+              className="inline-flex items-center justify-center rounded-lg bg-stone-100 px-4 py-2 text-sm font-bold text-stone-900 transition hover:bg-stone-200"
+            >
+              전체 레시피 보기
+            </button>
+          </div>
 
-            {recommendationPreview.length > 0 ? (
-              <div className="space-y-3">
-                {recommendationPreview.map((recipe) => (
-                  <RecipeCard
-                    key={recipe.id}
-                    recipe={recipe}
-                    userIngredients={ingredients}
-                    onSelect={(selectedRecipe) => {
-                      setActiveRecipe(selectedRecipe);
-                      setEditing(false);
-                      scrollToSection("recipe-review");
-                    }}
-                    onDelete={deleteSavedRecipe}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-lg bg-stone-50 p-5 text-sm leading-6 text-stone-600 ring-1 ring-stone-200">
-                아직 바로 추천할 요리가 없어요. 재료를 추가하거나 레시피를 승인해보세요.
-              </div>
-            )}
-          </section>
-
-          <section>
-            <div className="mb-3">
-              <h2 className="text-lg font-black text-stone-950">유튜브 레시피 추가</h2>
-              <p className="mt-1 text-sm leading-6 text-stone-600">마음에 드는 유튜브 레시피를 추가해서 추천 DB를 채울 수 있어요.</p>
+          {recommendationPreview.length > 0 ? (
+            <div className="space-y-3">
+              {recommendationPreview.map((recipe) => (
+                <RecipeCard
+                  key={recipe.id}
+                  recipe={recipe}
+                  userIngredients={ingredients}
+                  onSelect={(selectedRecipe) => {
+                    setActiveRecipe(selectedRecipe);
+                    setEditing(false);
+                    scrollToSection("recipe-review");
+                  }}
+                  onDelete={deleteSavedRecipe}
+                />
+              ))}
             </div>
-            <URLInput url={url} setUrl={setUrl} onAnalyze={analyzeRecipe} loading={loading} />
-          </section>
-
-          {loading ? <AnalysisLoadingCard step={analysisStep} /> : null}
-
-          {message ? <MessageBanner type={message.type} text={message.text} /> : null}
-
-          {cachedRecipe ? (
-            <section className="rounded-lg bg-white p-4 shadow-soft ring-1 ring-stone-200">
-              <p className="text-sm font-bold text-stone-900">이미 저장된 영상이에요.</p>
-              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <button type="button" onClick={() => setCachedRecipe(null)} className="rounded-lg bg-carrot-600 px-4 py-3 text-sm font-bold text-white">
-                  기존 레시피 보기
-                </button>
-                <button type="button" onClick={() => analyzeRecipe({ force: true })} className="rounded-lg bg-stone-100 px-4 py-3 text-sm font-bold text-stone-900">
-                  다시 분석하기
-                </button>
-              </div>
-            </section>
           ) : null}
 
-          <section id="recipe-review" className="scroll-mt-6">
-            {activeRecipe ? (
-              <RecipeAnalysisResult
-                recipe={activeRecipe}
-                userIngredients={ingredients}
-                editing={editing}
-                setEditing={setEditing}
-                onSave={saveRecipe}
-                onUpdate={updateRecipe}
-              />
-            ) : null}
-          </section>
+          {recommendationPreview.length === 0 ? (
+            <div className="rounded-lg bg-stone-50 p-5 text-sm leading-6 text-stone-600 ring-1 ring-stone-200">
+              아직 바로 추천할 요리가 없어요. 재료를 추가하거나 레시피를 승인해보세요.
+            </div>
+          ) : null}
+        </section>
 
-          <section id="saved-recipes" className="scroll-mt-6">
-            <SavedRecipeList
-              recipes={recipes}
-              approvedCount={approvedRecipes.length}
+        <section>
+          <div className="mb-3">
+            <h2 className="text-lg font-black text-stone-950">유튜브 레시피 추가</h2>
+            <p className="mt-1 text-sm leading-6 text-stone-600">마음에 드는 유튜브 레시피를 추가해서 추천 DB를 채울 수 있어요.</p>
+          </div>
+          <URLInput url={url} setUrl={setUrl} onAnalyze={analyzeRecipe} loading={loading} />
+        </section>
+
+        {loading ? <AnalysisLoadingCard step={analysisStep} /> : null}
+
+        {message ? <MessageBanner type={message.type} text={message.text} /> : null}
+
+        {cachedRecipe ? (
+          <section className="rounded-lg bg-white p-4 shadow-soft ring-1 ring-stone-200">
+            <p className="text-sm font-bold text-stone-900">이미 저장된 영상이에요.</p>
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <button type="button" onClick={() => setCachedRecipe(null)} className="rounded-lg bg-carrot-600 px-4 py-3 text-sm font-bold text-white">
+                기존 레시피 보기
+              </button>
+              <button type="button" onClick={() => analyzeRecipe({ force: true })} className="rounded-lg bg-stone-100 px-4 py-3 text-sm font-bold text-stone-900">
+                다시 분석하기
+              </button>
+            </div>
+          </section>
+        ) : null}
+
+        <section id="recipe-review" className="scroll-mt-6">
+          {activeRecipe ? (
+            <RecipeAnalysisResult
+              recipe={activeRecipe}
               userIngredients={ingredients}
-              selectedFilter={selectedFilter}
-              setSelectedFilter={setSelectedFilter}
-              search={search}
-              setSearch={setSearch}
-              onSelect={(recipe) => {
-                setActiveRecipe(recipe);
-                setEditing(false);
-                scrollToSection("recipe-review");
-              }}
-              onDelete={deleteSavedRecipe}
+              editing={editing}
+              setEditing={setEditing}
+              onSave={saveRecipe}
+              onUpdate={updateRecipe}
             />
-          </section>
-        </div>
+          ) : null}
+        </section>
 
-        <aside id="ingredient-manager" className="scroll-mt-6 space-y-6 lg:sticky lg:top-6">
-          <IngredientManager ingredients={ingredients} setIngredients={setIngredients} />
-        </aside>
+        <section id="saved-recipes" className="scroll-mt-6">
+          <SavedRecipeList
+            recipes={recipes}
+            approvedCount={approvedRecipes.length}
+            userIngredients={ingredients}
+            selectedFilter={selectedFilter}
+            setSelectedFilter={setSelectedFilter}
+            search={search}
+            setSearch={setSearch}
+            onSelect={(recipe) => {
+              setActiveRecipe(recipe);
+              setEditing(false);
+              scrollToSection("recipe-review");
+            }}
+            onDelete={deleteSavedRecipe}
+          />
+        </section>
       </div>
+
+      <IngredientDrawer
+        ingredients={ingredients}
+        setIngredients={setIngredients}
+        isOpen={isIngredientDrawerOpen}
+        onToggle={() => setIsIngredientDrawerOpen((isOpen) => !isOpen)}
+        onClose={() => setIsIngredientDrawerOpen(false)}
+      />
     </main>
   );
 }
