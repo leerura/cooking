@@ -1,6 +1,7 @@
 "use client";
 
-import { Leaf, Package, Plus, Search, Snowflake, X } from "lucide-react";
+import { ChevronDown, Leaf, Package, Plus, Search, Snowflake, X } from "lucide-react";
+import { useState } from "react";
 import { normalizeIngredientName } from "@/lib/ingredients";
 import type { UserIngredient } from "@/lib/types";
 import { QuickIngredientButtons } from "./QuickIngredientButtons";
@@ -140,6 +141,8 @@ export function IngredientManager({
   ingredients: UserIngredient[];
   setIngredients: (ingredients: UserIngredient[]) => void;
 }) {
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+
   function addIngredient(name: string) {
     const trimmed = name.trim();
     if (!trimmed) return;
@@ -171,6 +174,7 @@ export function IngredientManager({
   }));
 
   const filledCategories = groupedIngredients.filter((category) => category.ingredients.length > 0).length;
+  const hasIngredients = ingredients.length > 0;
 
   return (
     <section className="overflow-hidden rounded-lg bg-white shadow-soft ring-1 ring-stone-200">
@@ -207,30 +211,57 @@ export function IngredientManager({
           </div>
         </form>
 
-        <div>
-          <div className="mb-2 flex items-center justify-between">
-            <p className="text-xs font-bold uppercase tracking-normal text-stone-400">빠른 추가</p>
-            <p className="text-xs font-medium text-stone-400">자취생 기본 재료</p>
-          </div>
-          <QuickIngredientButtons onAdd={addIngredient} existing={ingredients.map((ingredient) => ingredient.name)} />
+        <div className={`rounded-lg border ${hasIngredients ? "border-stone-200 bg-stone-50/70" : "border-dashed border-carrot-200 bg-carrot-50/40"}`}>
+          <button
+            type="button"
+            onClick={() => setQuickAddOpen((isOpen) => !isOpen)}
+            className="flex w-full items-center justify-between gap-3 px-3.5 py-3 text-left transition hover:bg-white/60"
+            aria-expanded={quickAddOpen}
+          >
+            <span>
+              <span className="block text-sm font-bold text-stone-800">자취생 기본 재료 빠르게 추가</span>
+              {!hasIngredients ? (
+                <span className="mt-0.5 block text-xs font-medium text-stone-500">처음 세팅할 때 자주 쓰는 재료를 골라보세요.</span>
+              ) : null}
+            </span>
+            <ChevronDown aria-hidden className={`h-4 w-4 shrink-0 text-stone-400 transition ${quickAddOpen ? "rotate-180" : ""}`} />
+          </button>
+          {quickAddOpen ? (
+            <div className="border-t border-stone-200 px-3.5 py-3">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-xs font-black text-stone-700">빠른 추가</p>
+                <p className="text-xs font-medium text-stone-400">이미 있는 재료는 선택됨</p>
+              </div>
+              <QuickIngredientButtons onAdd={addIngredient} existing={ingredients.map((ingredient) => ingredient.name)} />
+            </div>
+          ) : null}
         </div>
 
-        {ingredients.length === 0 ? (
+        {!hasIngredients ? (
           <div className="rounded-lg border border-dashed border-stone-200 bg-stone-50 px-4 py-8 text-center">
-            <p className="text-sm font-bold text-stone-900">아직 담긴 재료가 없어요</p>
-            <p className="mt-1 text-sm leading-6 text-stone-500">냉장고에 있는 기본 재료부터 추가해보세요.</p>
+            <p className="text-sm font-bold text-stone-900">아직 등록한 재료가 없어요.</p>
+            <p className="mt-1 text-sm leading-6 text-stone-500">자주 쓰는 재료를 빠르게 추가하거나 직접 입력해보세요.</p>
           </div>
         ) : (
           <div className="space-y-3">
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-black text-stone-950">보유 재료</h3>
+                <p className="mt-0.5 text-xs font-medium text-stone-500">카테고리별로 정리해서 보여줘요.</p>
+              </div>
+              <span className="shrink-0 rounded-full bg-stone-100 px-2.5 py-1 text-xs font-black text-stone-700 ring-1 ring-stone-200">
+                총 {ingredients.length}개
+              </span>
+            </div>
             {groupedIngredients.map((category) => (
-              <section key={category.title} className="border-t border-stone-200 pt-4 first:border-t-0 first:pt-0">
+              <section key={category.title} className="rounded-lg border border-stone-200 bg-white p-3.5">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-2.5">
-                    <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ring-1 ${getAccentClasses(category.accent).icon}`}>
+                    <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ring-1 ${getAccentClasses(category.accent).icon}`}>
                       <category.Icon aria-hidden className="h-4 w-4" />
                     </span>
                     <div className="min-w-0">
-                      <h3 className="text-base font-black text-stone-950">{category.title}</h3>
+                      <h4 className="text-sm font-black text-stone-950">{category.title}</h4>
                       <p className="mt-0.5 truncate text-xs text-stone-500">{category.description}</p>
                     </div>
                   </div>
@@ -240,11 +271,11 @@ export function IngredientManager({
                 </div>
 
                 {category.ingredients.length > 0 ? (
-                  <ul className="grid grid-cols-2 gap-2.5">
+                  <ul className="space-y-1.5">
                     {category.ingredients.map((ingredient) => (
-                      <li key={ingredient.id} className="flex min-w-0 items-center gap-2.5 rounded-lg border border-stone-200 bg-white px-3 py-3 shadow-sm">
+                      <li key={ingredient.id} className="flex min-w-0 items-center gap-2.5 rounded-md bg-stone-50 px-2.5 py-2 ring-1 ring-stone-100">
                         <div className="flex min-w-0 flex-1 items-center gap-2.5">
-                          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-sm font-black ring-1 ${getAccentClasses(category.accent).thumb}`}>
+                          <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs font-black ring-1 ${getAccentClasses(category.accent).thumb}`}>
                             {ingredient.name.slice(0, 1)}
                           </span>
                           <div className="min-w-0">
@@ -255,7 +286,7 @@ export function IngredientManager({
                         <button
                           type="button"
                           onClick={() => removeIngredient(ingredient.id)}
-                          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-stone-400 ring-1 ring-stone-200 transition hover:bg-rose-50 hover:text-rose-600 hover:ring-rose-100"
+                          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-stone-400 transition hover:bg-rose-50 hover:text-rose-600"
                           aria-label={`${ingredient.name} 삭제`}
                         >
                           <X aria-hidden className="h-3.5 w-3.5" />

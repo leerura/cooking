@@ -1,3 +1,5 @@
+import { normalizeIngredientName } from "@/lib/ingredients";
+
 const QUICK_INGREDIENTS = [
   "밥",
   "계란",
@@ -23,21 +25,24 @@ const QUICK_INGREDIENTS = [
 ];
 
 export function QuickIngredientButtons({ onAdd, existing }: { onAdd: (name: string) => void; existing: string[] }) {
+  const normalizedExisting = existing.map((ingredient) => normalizeIngredientName(ingredient));
+
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+    <div className="flex flex-wrap gap-1.5">
       {QUICK_INGREDIENTS.map((ingredient) => {
-        const added = existing.includes(ingredient);
+        const added = normalizedExisting.includes(normalizeIngredientName(ingredient));
         return (
           <button
             key={ingredient}
             type="button"
             onClick={() => onAdd(ingredient)}
             disabled={added}
-            className={`shrink-0 rounded-full px-3 py-2 text-sm font-medium ring-1 transition ${
+            className={`rounded-full px-2.5 py-1.5 text-xs font-bold ring-1 transition ${
               added
                 ? "bg-stone-100 text-stone-400 ring-stone-200"
-                : "bg-white text-stone-800 ring-stone-200 hover:bg-carrot-50 hover:ring-carrot-200"
+                : "bg-white text-stone-700 ring-stone-200 hover:bg-carrot-50 hover:text-stone-950 hover:ring-carrot-200"
             }`}
+            aria-pressed={added}
           >
             {ingredient}
           </button>
